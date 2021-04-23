@@ -50,9 +50,6 @@ d_model = Critic(
     channels=args.channels
 ).to(device)
 
-print(g_model)
-print(d_model)
-
 ## Optimizers.
 if args.g_optimizer == 'adam':
     g_optimizer = tc.optim.Adam(g_model.parameters(), lr=args.g_lr, betas=(0.0, 0.90))
