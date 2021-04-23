@@ -45,7 +45,7 @@ class Generator(tc.nn.Module):
             ResBlockUp(channels),
             tc.nn.BatchNorm2d(channels),
             tc.nn.ReLU(),
-            tc.nn.Conv2d(channels, img_channels, kernel_size=(3,3), stride=(1,1)),
+            tc.nn.Conv2d(channels, img_channels, kernel_size=(3,3), stride=(1,1), padding=(1,1)),
             tc.nn.Tanh()
         )
 

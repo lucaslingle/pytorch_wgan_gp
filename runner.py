@@ -18,6 +18,7 @@ class Runner:
         self.num_critic_steps = num_critic_steps
 
         self.reference_noise = 2.0 * tc.rand(size=(64, self.g_model.z_dim)) - 1.0
+        self.global_step = 0
 
     def train_critic(self, x_real, x_fake):
         ## trains critic one step.
@@ -29,9 +30,10 @@ class Runner:
         d_fake = self.d_model(x_fake)
         d_loss_wgan = d_fake.mean() - d_real.mean()
 
-        interp_s = tc.rand(size=(self.batch_size,))
+        interp_s = tc.rand(size=(self.batch_size,)).view(-1, 1, 1, 1)
         x_interp = interp_s * x_real + (1. - interp_s) * x_fake
-        d_interp = self.d_model(x_fake)
+        x_interp.requires_grad_()
+        d_interp = self.d_model(x_interp)
 
         d_loss_wgan.backward(retain_graph=True)
         gp = self.gp_lambda * tc.square(compute_grad2(d_interp, x_interp) - 1.0).mean()
@@ -50,32 +52,30 @@ class Runner:
 
         return g_loss
 
-    def train_epoch(self):
-        for batch_idx, (x_real, _) in enumerate(self.dataloader, 1):
+    def train(self):
+        while self.global_step < self.max_steps:
+            for batch_idx, (x_real, _) in enumerate(self.dataloader, 1):
 
-            for _ in range(self.num_critic_steps):
+                for _ in range(self.num_critic_steps):
+                    x_fake = self.generate(self.batch_size)
+                    d_loss = self.train_critic(x_real, x_fake)
+
                 x_fake = self.generate(self.batch_size)
-                d_loss = self.train_critic(x_real, x_fake)
+                g_loss = self.train_generator(x_fake)
 
-            x_fake = self.generate(self.batch_size)
-            g_loss = self.train_generator(x_fake)
+                self.g_scheduler.step()
+                self.d_scheduler.step()
 
-            self.g_scheduler.step()
-            self.d_scheduler.step()
+                self.global_step += 1
 
-            if batch_idx % 10 == 0:
-                print("[{}/{}] Generator Loss: {}... Critic Loss: {} ".format(
-                    batch_idx, len(self.dataloader), g_loss.item(), d_loss.item()))
+                if self.global_step % 10 == 0:
+                    print("[{}/{}] Generator Loss: {}... Critic Loss: {} ".format(
+                        self.global_step, self.max_steps, g_loss.item(), d_loss.item()))
 
-            if batch_idx % 50 == 0:
-                self.generate_and_save(None, z=self.reference_noise)
+                if self.global_step % 50 == 0:
+                    self.generate_and_save(None, z=self.reference_noise)
 
         return
-
-    def train(self):
-        for epoch in range(1, self.epochs+1):
-            print(f"Epoch {epoch}\n-------------------------------")
-            self.train_epoch()
 
     def generate(self, num_samples, z=None):
         if z is None:
