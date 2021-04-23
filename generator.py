@@ -26,11 +26,17 @@ class ResBlockUp(tc.nn.Module):
                 tc.nn.init.kaiming_normal_(m.weight)
                 tc.nn.init.zeros_(m.bias)
 
+        for m in self.upsample_shortcut:
+            if isinstance(m, tc.nn.Conv2d):
+                tc.nn.init.kaiming_normal_(m.weight)
+                tc.nn.init.zeros_(m.bias)
+
     def forward(self, x):
         residual = self.residual_stack(x)
         shortcut = self.upsample_shortcut(x)
         out = shortcut + residual
         return out
+
 
 class Generator(tc.nn.Module):
     def __init__(self, img_height, img_width, img_channels, channels, z_dim):

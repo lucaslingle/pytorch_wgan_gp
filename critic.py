@@ -1,5 +1,6 @@
 import torch as tc
 
+
 class OptimizedInitialResBlock(tc.nn.Module):
     def __init__(self, in_channels, out_channels):
         super(OptimizedInitialResBlock, self).__init__()
