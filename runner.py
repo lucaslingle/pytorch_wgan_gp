@@ -26,17 +26,16 @@ class Runner:
         x_real.requires_grad_()
         x_fake.requires_grad_()
 
-        d_real = self.d_model(x_real)
-        d_fake = self.d_model(x_fake)
+        d_real = self.d_model(x_real)[:,0]
+        d_fake = self.d_model(x_fake)[:,0]
         d_loss_wgan = d_fake.mean() - d_real.mean()
+        d_loss_wgan.backward(retain_graph=True)
+        #d_loss_wgan.backward()
 
         interp_s = tc.rand(size=(self.batch_size,)).view(-1, 1, 1, 1)
         x_interp = interp_s * x_real + (1. - interp_s) * x_fake
-        x_interp.requires_grad_()
-        d_interp = self.d_model(x_interp)
-
-        d_loss_wgan.backward(retain_graph=True)
-        gp = self.gp_lambda * tc.square(compute_grad2(d_interp, x_interp) - 1.0).mean()
+        d_interp = self.d_model(x_interp)[:,0]
+        gp = self.gp_lambda * tc.square(tc.sqrt(compute_grad2(d_interp, x_interp)) - 1.0).mean()
         gp.backward()
 
         self.d_optimizer.step()
@@ -44,7 +43,8 @@ class Runner:
 
     def train_generator(self, x_fake):
         ## trains generator one step.
-        g_loss = -self.d_model(x_fake)
+        d_fake = self.d_model(x_fake)[:,0]
+        g_loss = -d_fake.mean()
 
         self.g_optimizer.zero_grad()
         g_loss.backward()
@@ -68,7 +68,7 @@ class Runner:
 
                 self.global_step += 1
 
-                if self.global_step % 10 == 0:
+                if True: #self.global_step % 10 == 0:
                     print("[{}/{}] Generator Loss: {}... Critic Loss: {} ".format(
                         self.global_step, self.max_steps, g_loss.item(), d_loss.item()))
 
