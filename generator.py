@@ -8,9 +8,9 @@ class ResBlockUp(tc.nn.Module):
         """
         super(ResBlockUp, self).__init__()
         self.residual_stack = tc.nn.Sequential(
-            tc.nn.Upsample(mode='nearest', scale_factor=2),
             tc.nn.BatchNorm2d(channels),
             tc.nn.ReLU(),
+            tc.nn.Upsample(mode='nearest', scale_factor=2),
             tc.nn.Conv2d(channels, channels, kernel_size=(3,3), stride=(1,1), padding=(1,1)),
             tc.nn.BatchNorm2d(channels),
             tc.nn.ReLU(),

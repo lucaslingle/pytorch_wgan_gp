@@ -35,17 +35,12 @@ class ResBlock(tc.nn.Module):
     """
     Implementation of 'Res Block/Res Block Down', consistent with official wgan-gp cifar10 resnet critic implementation.
     See https://github.com/igul222/improved_wgan_training/blob/master/gan_cifar_resnet.py#L111
-
-    Note in particular that while the paper says the critic uses no batchnorm, in their implementation is actually does,
-    just not in the first layer.
     """
     def __init__(self, channels, down=False):
         super(ResBlock, self).__init__()
         self.residual_stack = tc.nn.Sequential(
-            tc.nn.BatchNorm2d(channels),
             tc.nn.ReLU(),
             tc.nn.Conv2d(channels, channels, kernel_size=(3,3), stride=(1,1), padding=(1,1)),
-            tc.nn.BatchNorm2d(channels),
             tc.nn.ReLU(),
             tc.nn.Conv2d(channels, channels, kernel_size=(3,3), stride=(1,1), padding=(1,1)),
         )
