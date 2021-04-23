@@ -53,8 +53,10 @@ class Runner:
         return g_loss
 
     def train(self):
+        epoch = 1
         while self.global_step < self.max_steps:
             for batch_idx, (x_real, _) in enumerate(self.dataloader, 1):
+                print(f"Epoch {epoch}\n-------------------------------")
 
                 for _ in range(self.num_critic_steps):
                     x_fake = self.generate(self.batch_size)
@@ -75,6 +77,7 @@ class Runner:
                 if self.global_step % 50 == 0:
                     self.generate_and_save(None, z=self.reference_noise)
 
+            epoch += 1
         return
 
     def generate(self, num_samples, z=None):
