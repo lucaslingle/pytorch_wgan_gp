@@ -16,7 +16,10 @@ class ResBlockUp(tc.nn.Module):
             tc.nn.ReLU(),
             tc.nn.Conv2d(channels, channels, kernel_size=(3,3), stride=(1,1), padding=(1,1)),
         )
-        self.upsample_shortcut = tc.nn.Upsample(mode='nearest', scale_factor=2)
+        self.upsample_shortcut = tc.nn.Sequential(
+            tc.nn.Upsample(mode='nearest', scale_factor=2),
+            tc.nn.Conv2d(channels, channels, kernel_size=(3,3), stride=(1,1), padding=(1,1)),
+        )
 
         for m in self.residual_stack:
             if isinstance(m, tc.nn.Conv2d):
