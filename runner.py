@@ -1,9 +1,11 @@
 import torch as tc
 from utils import save_img_grid, compute_grad2
+import os
+
 
 class Runner:
     def __init__(self, batch_size, max_steps, dataloader, g_model, d_model, g_optimizer, d_optimizer,
-                 g_scheduler, d_scheduler, gp_lambda, num_critic_steps):
+                 g_scheduler, d_scheduler, gp_lambda, num_critic_steps, checkpoint_dir, model_dir):
 
         self.batch_size = batch_size
         self.max_steps = max_steps
@@ -16,6 +18,8 @@ class Runner:
         self.dataloader = dataloader
         self.gp_lambda = gp_lambda
         self.num_critic_steps = num_critic_steps
+        self.checkpoint_dir = checkpoint_dir
+        self.model_dir = model_dir
 
         self.reference_noise = 2.0 * tc.rand(size=(64, self.g_model.z_dim)) - 1.0
         self.global_step = 0
@@ -30,7 +34,6 @@ class Runner:
         d_fake = self.d_model(x_fake)[:,0]
         d_loss_wgan = d_fake.mean() - d_real.mean()
         d_loss_wgan.backward(retain_graph=True)
-        #d_loss_wgan.backward()
 
         interp_s = tc.rand(size=(self.batch_size,)).view(-1, 1, 1, 1)
         x_interp = interp_s * x_real + (1. - interp_s) * x_fake
@@ -57,24 +60,31 @@ class Runner:
         while self.global_step < self.max_steps:
             print(f"Epoch {epoch}\n-------------------------------")
             for batch_idx, (x_real, _) in enumerate(self.dataloader, 1):
-                for _ in range(self.num_critic_steps):
-                    x_fake = self.generate(self.batch_size)
-                    d_loss = self.train_critic(x_real, x_fake)
+                if x_real.shape[0] != self.batch_size:
+                    continue
 
+                # refactored code to train critic of different batches of data at each critic step.
+                # there are num_critic_steps per generator step.
                 x_fake = self.generate(self.batch_size)
-                g_loss = self.train_generator(x_fake)
+                d_loss = self.train_critic(x_real, x_fake)
 
-                self.g_scheduler.step()
-                self.d_scheduler.step()
+                # generator step.
+                if batch_idx % self.num_critic_steps == 0:
+                    x_fake = self.generate(self.batch_size)
+                    g_loss = self.train_generator(x_fake)
 
-                self.global_step += 1
+                    self.g_scheduler.step()
+                    self.d_scheduler.step()
 
-                if True: #self.global_step % 10 == 0:
-                    print("[{}/{}] Generator Loss: {}... Critic Loss: {} ".format(
-                        self.global_step, self.max_steps, g_loss.item(), d_loss.item()))
+                    self.global_step += 1
 
-                if self.global_step % 10 == 0:
-                    self.generate_and_save(None, z=self.reference_noise)
+                    if True: #self.global_step % 10 == 0:
+                        print("[{}/{}] Generator Loss: {}... Critic Loss: {} ".format(
+                            self.global_step, self.max_steps, g_loss.item(), d_loss.item()))
+
+                    if self.global_step % 10 == 0:
+                        self.generate_and_save(None, z=self.reference_noise)
+                        self.save_checkpoint()
 
             epoch += 1
         return
@@ -89,5 +99,33 @@ class Runner:
         samples = self.generate(num_samples, z=z).detach()
         fp = save_img_grid(images=samples, grid_size=8)
         print('Saved images to {}'.format(fp))
+
+    def maybe_load_checkpoint(self):
+        g_model_path = os.path.join(self.checkpoint_dir, self.model_prefix, 'g_model.pth')
+        d_model_path = os.path.join(self.checkpoint_dir, self.model_prefix, 'd_model.pth')
+        g_optimizer_path = os.path.join(self.checkpoint_dir, self.model_prefix, 'g_opt.pth')
+        d_optimizer_path = os.path.join(self.checkpoint_dir, self.model_prefix, 'd_opt.pth')
+
+        try:
+            self.g_model.load_state_dict(tc.load(g_model_path))
+            self.d_model.load_state_dict(tc.load(d_model_path))
+            self.g_optimizer.load_state_dict(tc.load(g_optimizer_path))
+            self.d_optimizer.load_state_dict(tc.load(d_optimizer_path))
+            print('Successfully loaded checkpoints from {}'.format(os.path.join(self.checkpoint_dir, self.model_prefix)))
+        except Exception:
+            print('Bad checkpoint or none. Continuing training from scratch.')
+
+    def save_checkpoint(self, checkpoint_dir, model_prefix):
+        g_model_path = os.path.join(checkpoint_dir, model_prefix, 'g_model.pth')
+        d_model_path = os.path.join(checkpoint_dir, model_prefix, 'd_model.pth')
+        g_optimizer_path = os.path.join(checkpoint_dir, model_prefix, 'g_opt.pth')
+        d_optimizer_path = os.path.join(checkpoint_dir, model_prefix, 'd_opt.pth')
+
+        tc.save(self.g_model.state_dict(), g_model_path)
+        tc.save(self.d_model.state_dict(), d_model_path)
+        tc.save(self.g_optimizer.state_dict(), g_optimizer_path)
+        tc.save(self.d_optimizer.state_dict(), d_optimizer_path)
+
+        print('Successfully saved checkpoints to {}'.format(os.path.join(checkpoint_dir, model_prefix)))
 
 
