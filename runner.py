@@ -100,32 +100,36 @@ class Runner:
         fp = save_img_grid(images=samples, grid_size=8)
         print('Saved images to {}'.format(fp))
 
-    def maybe_load_checkpoint(self):
-        g_model_path = os.path.join(self.checkpoint_dir, self.model_dir, 'g_model.pth')
-        d_model_path = os.path.join(self.checkpoint_dir, self.model_dir, 'd_model.pth')
-        g_optimizer_path = os.path.join(self.checkpoint_dir, self.model_dir, 'g_opt.pth')
-        d_optimizer_path = os.path.join(self.checkpoint_dir, self.model_dir, 'd_opt.pth')
-
-        try:
-            self.g_model.load_state_dict(tc.load(g_model_path))
-            self.d_model.load_state_dict(tc.load(d_model_path))
-            self.g_optimizer.load_state_dict(tc.load(g_optimizer_path))
-            self.d_optimizer.load_state_dict(tc.load(d_optimizer_path))
-            print('Successfully loaded checkpoints from {}'.format(os.path.join(self.checkpoint_dir, self.model_dir)))
-        except Exception:
-            print('Bad checkpoint or none. Continuing training from scratch.')
-
     def save_checkpoint(self):
-        g_model_path = os.path.join(self.checkpoint_dir, self.model_dir, 'g_model.pth')
-        d_model_path = os.path.join(self.checkpoint_dir, self.model_dir, 'd_model.pth')
-        g_optimizer_path = os.path.join(self.checkpoint_dir, self.model_dir, 'g_opt.pth')
-        d_optimizer_path = os.path.join(self.checkpoint_dir, self.model_dir, 'd_opt.pth')
+        model_path = os.path.join(self.checkpoint_dir, self.model_dir)
+        if not os.path.exists(model_path):
+            os.makedirs(model_path)
+
+        g_model_path = os.path.join(model_path, 'g_model.pth')
+        d_model_path = os.path.join(model_path, 'd_model.pth')
+        g_optimizer_path = os.path.join(model_path, 'g_opt.pth')
+        d_optimizer_path = os.path.join(model_path, 'd_opt.pth')
 
         tc.save(self.g_model.state_dict(), g_model_path)
         tc.save(self.d_model.state_dict(), d_model_path)
         tc.save(self.g_optimizer.state_dict(), g_optimizer_path)
         tc.save(self.d_optimizer.state_dict(), d_optimizer_path)
 
-        print('Successfully saved checkpoints to {}'.format(os.path.join(self.checkpoint_dir, self.model_dir)))
+        print('Successfully saved checkpoints to {}'.format(model_path))
 
+    def maybe_load_checkpoint(self):
+        model_path = os.path.join(self.checkpoint_dir, self.model_dir)
+        g_model_path = os.path.join(model_path, 'g_model.pth')
+        d_model_path = os.path.join(model_path, 'd_model.pth')
+        g_optimizer_path = os.path.join(model_path, 'g_opt.pth')
+        d_optimizer_path = os.path.join(model_path, 'd_opt.pth')
+
+        try:
+            self.g_model.load_state_dict(tc.load(g_model_path))
+            self.d_model.load_state_dict(tc.load(d_model_path))
+            self.g_optimizer.load_state_dict(tc.load(g_optimizer_path))
+            self.d_optimizer.load_state_dict(tc.load(d_optimizer_path))
+            print('Successfully loaded checkpoints from {}'.format(model_path))
+        except Exception:
+            print('Bad checkpoint or none. Continuing training from scratch.')
 
