@@ -4,7 +4,7 @@ import torchvision as tv
 def get_celeba_dataloaders(batch_size):
     transform = tv.transforms.Compose([
         tv.transforms.CenterCrop(108),
-        tv.transforms.Resize(64),
+        tv.transforms.Resize(32),
         tv.transforms.ToTensor(),
         tv.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))  # scales pixels to [-1, 1].
     ])
