@@ -88,6 +88,7 @@ d_scheduler = tc.optim.lr_scheduler.OneCycleLR(
 
 ## Runner.
 runner = Runner(
+    device = device,
     batch_size=args.batch_size,
     max_steps=args.max_steps,
     g_model=g_model,

@@ -4,9 +4,10 @@ import os
 
 
 class Runner:
-    def __init__(self, batch_size, max_steps, dataloader, g_model, d_model, g_optimizer, d_optimizer,
+    def __init__(self, device, batch_size, max_steps, dataloader, g_model, d_model, g_optimizer, d_optimizer,
                  g_scheduler, d_scheduler, gp_lambda, num_critic_steps, checkpoint_dir, model_dir):
 
+        self.device = device
         self.batch_size = batch_size
         self.max_steps = max_steps
         self.g_model = g_model
@@ -26,16 +27,19 @@ class Runner:
 
     def train_critic(self, x_real, x_fake):
         ## trains critic one step.
-        self.d_optimizer.zero_grad()
+        x_real, x_fake = x_real.to(self.device), x_fake.to(self.device)
         x_real.requires_grad_()
         x_fake.requires_grad_()
+        self.d_optimizer.zero_grad()
 
         d_real = self.d_model(x_real)[:,0]
         d_fake = self.d_model(x_fake)[:,0]
         d_loss_wgan = d_fake.mean() - d_real.mean()
         d_loss_wgan.backward(retain_graph=True)
 
-        interp_s = tc.rand(size=(self.batch_size,)).view(-1, 1, 1, 1)
+        interp_s = tc.rand(size=(self.batch_size,))
+        interp_s = interp_s.to(self.device)
+        interp_s = interp_s.view(-1, 1, 1, 1)
         x_interp = interp_s * x_real + (1. - interp_s) * x_fake
         d_interp = self.d_model(x_interp)[:,0]
         gp = self.gp_lambda * tc.square(tc.sqrt(compute_grad2(d_interp, x_interp)) - 1.0).mean()
@@ -46,6 +50,7 @@ class Runner:
 
     def train_generator(self, x_fake):
         ## trains generator one step.
+        x_fake = x_fake.to(self.device)
         d_fake = self.d_model(x_fake)[:,0]
         g_loss = -d_fake.mean()
 
@@ -92,11 +97,13 @@ class Runner:
     def generate(self, num_samples, z=None):
         if z is None:
             z = 2.0 * tc.rand(size=(num_samples, self.g_model.z_dim)) - 1.0  # uniform noise in [-1, 1]^z_dim
+        z = z.to(self.device)
         x_fake = self.g_model(z)
         return x_fake
 
     def generate_and_save(self, num_samples, z=None):
         samples = self.generate(num_samples, z=z).detach()
+        samples = samples.cpu()
         fp = save_img_grid(images=samples, grid_size=8)
         print('Saved images to {}'.format(fp))
 
